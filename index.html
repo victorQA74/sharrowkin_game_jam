@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Каракурт: ночная смена — браузерная игра Sharrowkin Jam «Паук против человека»" />
+  <title>Каракурт: ночная смена</title>
+  <style>
+    :root { color-scheme: dark; --bg: #120f19; --card: #231d30; --line: #5b4a78; --accent: #9be564; --danger: #fa7667; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: #f1ecf8; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+    #app { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px; }
+    #stage { position: relative; width: min(100%, calc((100vh - 76px) * 1000 / 600)); aspect-ratio: 10 / 6; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 10px 40px #000a; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+    #overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10, 7, 18, .72); padding: 12px; }
+    #overlay[hidden] { display: none; }
+    .card { max-width: 560px; max-height: 100%; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; text-align: center; line-height: 1.45; }
+    .card h1 { margin: 0 0 6px; font-size: clamp(22px, 4vw, 34px); color: var(--accent); }
+    .card p { margin: 6px 0; font-size: clamp(13px, 1.9vw, 16px); }
+    .card .muted { color: #b7abcb; font-size: clamp(12px, 1.6vw, 14px); }
+    .card .big { font-size: clamp(18px, 3vw, 26px); font-weight: 700; }
+    button { font: inherit; font-weight: 700; color: #1a1424; background: var(--accent); border: 0; border-radius: 10px; padding: 10px 18px; cursor: pointer; min-height: 44px; }
+    button.secondary { color: #f1ecf8; background: #3a2f4d; border: 1px solid var(--line); }
+    button:hover { filter: brightness(1.1); }
+    button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+    #bar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    #bar button { padding: 8px 14px; min-height: 44px; }
+    #web { background: #cfeaff; }
+  </style>
+</head>
+<body>
+  <main id="app">
+    <div id="stage">
+      <canvas id="game" width="1000" height="600" aria-label="Игровое поле: ночная кухня" role="img"></canvas>
+      <div id="overlay" role="dialog" aria-live="polite"></div>
+    </div>
+    <div id="bar">
+      <button id="web" type="button">Паутина (Space)</button>
+      <button id="pause" class="secondary" type="button">Пауза (P)</button>
+      <button id="mute" class="secondary" type="button">Звук: вкл</button>
+      <button id="restart" class="secondary" type="button">Заново</button>
+    </div>
+  </main>
+  <noscript>Для игры нужен JavaScript.</noscript>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

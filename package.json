@@ -1,0 +1,23 @@
+{
+  "name": "karakurt-night-shift",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sharrowkin Jam: Spider vs Human browser game",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest",
+    "test:ci": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}
