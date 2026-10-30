@@ -1,0 +1,8 @@
+toolchain/node_modules/
+toolchain/test-results/
+toolchain/playwright-report/
+**/.wrangler/
+**/.dev.vars
+**/.dev.vars.*
+**/.env
+**/.env.*
