@@ -73,15 +73,54 @@ function arm(ctx: CanvasRenderingContext2D, from: Point, to: Point) {
   ctx.lineTo(from.x + (to.x - from.x) * 0.45, from.y + (to.y - from.y) * 0.45); ctx.stroke();
 }
 
+const SKIN_EDGE = '#9c6a52', NAIL = '#f3d6c4';
+
+// A human hand seen from above (back of the hand). Local +x points from the wrist to the fingertips;
+// `mirror` flips the thumb side so left and right hands look right.
+function hand(ctx: CanvasRenderingContext2D, p: Point, angle: number, scale = 1, mirror = 1) {
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(angle); ctx.scale(scale, scale * mirror);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // [base y, length, tip y]: index, middle, ring, little finger
+  const fingers: [number, number, number][] = [[-13, 30, -17], [-4, 35, -5], [5, 32, 6], [13, 25, 17]];
+  const fingerPath = ([y, len, tipY]: [number, number, number]) => { ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(12 + len, tipY); };
+  const thumbPath = () => { ctx.beginPath(); ctx.moveTo(-4, -14); ctx.quadraticCurveTo(8, -28, 24, -32); };
+  const palmPath = () => { ctx.beginPath(); ctx.roundRect(-20, -19, 38, 38, [14, 16, 16, 14]); };
+  // outline pass, then skin pass on top, so the shape gets a clean dark edge
+  ctx.strokeStyle = SKIN_EDGE;
+  ctx.lineWidth = 12.5; fingers.forEach(f => { fingerPath(f); ctx.stroke(); });
+  ctx.lineWidth = 14; thumbPath(); ctx.stroke();
+  ctx.lineWidth = 3; palmPath(); ctx.stroke();
+  ctx.strokeStyle = SKIN; ctx.fillStyle = SKIN;
+  ctx.lineWidth = 9.5; fingers.forEach(f => { fingerPath(f); ctx.stroke(); });
+  ctx.lineWidth = 11; thumbPath(); ctx.stroke();
+  palmPath(); ctx.fill();
+  // nails and knuckle creases
+  ctx.fillStyle = NAIL;
+  for (const [y, len, tipY] of fingers) {
+    const dx = len, dy = tipY - y, d = Math.hypot(dx, dy);
+    ctx.beginPath(); ctx.ellipse(12 + len - dx / d * 3.5, tipY - dy / d * 3.5, 3.4, 2.6, Math.atan2(dy, dx), 0, TAU); ctx.fill();
+  }
+  ctx.beginPath(); ctx.ellipse(21, -31, 3.6, 2.8, -0.25, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,70,50,.45)'; ctx.lineWidth = 1.4;
+  for (const [y, len, tipY] of fingers) {
+    const kx = 12 + len * 0.5, ky = y + (tipY - y) * 0.5;
+    ctx.beginPath(); ctx.moveTo(kx, ky - 3); ctx.lineTo(kx, ky + 3); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(-6, -8); ctx.quadraticCurveTo(4, 0, -6, 8); ctx.stroke(); // tendon hint
+  ctx.restore();
+}
+
 // The human: top view at the right edge of the room. Head with a headlamp, a hand resting on
 // the floor (the spider's target) and a second arm that swings the slipper.
 function human(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = SLEEVE; ctx.beginPath(); ctx.ellipse(1055, 300, 95, 215, 0, 0, TAU); ctx.fill();
   const hx = HAND.x + Math.sin(t * 1.3) * 2, hy = HAND.y + Math.cos(t * 1.1) * 2;
-  arm(ctx, { x: 1040, y: 185 }, { x: hx, y: hy });
-  ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(hx, hy, 30, 0, TAU); ctx.fill();
-  for (let i = -2; i <= 1; i++) { ctx.beginPath(); ctx.ellipse(hx - 30, hy + i * 13 + 6, 17, 6, i * 0.12, 0, TAU); ctx.fill(); }
+  const elbow: Point = { x: 1040, y: 185 };
+  arm(ctx, elbow, { x: hx + 14, y: hy });
+  // palm centre sits on HAND, fingers reach toward the room (the spider's side)
+  hand(ctx, { x: hx + 8, y: hy }, Math.atan2(hy - elbow.y, hx - elbow.x), 1.15, -1);
   arm(ctx, SHOULDER, { x: 962, y: 408 });
+  hand(ctx, { x: 958, y: 409 }, Math.atan2(408 - SHOULDER.y, 962 - SHOULDER.x), 0.95, 1);
   ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(1000, 300, 52, 0, TAU); ctx.fill();
   ctx.beginPath(); ctx.ellipse(1006, 246, 9, 14, 0, 0, TAU); ctx.ellipse(1006, 354, 9, 14, 0, 0, TAU); ctx.fill();
   ctx.fillStyle = '#2a1d1a'; ctx.beginPath(); ctx.arc(1012, 300, 47, 0, TAU); ctx.fill();
@@ -119,6 +158,7 @@ function strike(ctx: CanvasRenderingContext2D, g: Game) {
   }
   const tip: Point = { x: SHOULDER.x + (s.x - SHOULDER.x) * reach, y: SHOULDER.y + (s.y - SHOULDER.y) * reach };
   arm(ctx, SHOULDER, tip);
+  hand(ctx, tip, Math.atan2(s.y - SHOULDER.y, s.x - SHOULDER.x), 0.95, 1);
   slipper(ctx, tip, Math.atan2(s.y - SHOULDER.y, s.x - SHOULDER.x), 0.5 + 0.5 * reach);
 }
 
