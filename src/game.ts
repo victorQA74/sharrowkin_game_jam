@@ -30,9 +30,10 @@ export function createGame(): Game {
 export function isHidden(s: Game): boolean {
   return SHELTERS.some(r => s.player.x > r.x && s.player.x < r.x + r.w && s.player.y > r.y && s.player.y < r.y + r.h);
 }
-export function atHome(s: Game): boolean {
-  const h = SHELTERS[0];
-  return s.player.x > h.x && s.player.x < h.x + h.w && s.player.y > h.y && s.player.y < h.y + h.h;
+// The human's resting hand at the right edge of the room: biting it is the winning move.
+export const HAND = { x: 905, y: 215, r: 46 };
+export function atHand(s: Game): boolean {
+  return distance(s.player, HAND) < HAND.r;
 }
 export function spinWeb(s: Game): boolean {
   if (s.status !== 'playing' || s.silk < 1 || s.cooldown > 0) return false;
@@ -85,16 +86,16 @@ export function update(s: Game, dt: number, input: Point, random: () => number =
   for (const fly of s.flies) {
     fly.angle += Math.sin(s.elapsed * 1.9 + fly.phase) * dt * 2;
     fly.x += Math.cos(fly.angle) * 39 * dt; fly.y += Math.sin(fly.angle) * 39 * dt;
-    if (fly.x < 235 || fly.x > 950) { fly.angle = Math.PI - fly.angle; fly.x = clamp(fly.x, 235, 950); }
+    if (fly.x < 235 || fly.x > 840) { fly.angle = Math.PI - fly.angle; fly.x = clamp(fly.x, 235, 840); }
     if (fly.y < 80 || fly.y > 555) { fly.angle = -fly.angle; fly.y = clamp(fly.y, 80, 555); }
     if (s.webs.some(w => distance(w, fly) < 58)) {
       s.score++; s.catches++; burst(s, fly, '#c9ed9e', random);
-      fly.x = 260 + random() * 650; fly.y = 90 + random() * 440; fly.angle = random() * Math.PI * 2;
+      fly.x = 260 + random() * 560; fly.y = 90 + random() * 440; fly.angle = random() * Math.PI * 2;
     }
   }
   for (const p of s.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
   s.particles = s.particles.filter(p => p.life > 0);
   if (s.health <= 0 || s.time <= 0) {
     s.status = 'lost'; s.reason = s.health <= 0 ? 'Тапок оказался быстрее. В следующий раз — рывок в сторону!' : 'Наступило утро. Человек проснулся, а ужин ещё не собран.';
-  } else if (s.score >= GOAL && atHome(s)) s.status = 'won';
+  } else if (s.score >= GOAL && atHand(s)) s.status = 'won';
 }

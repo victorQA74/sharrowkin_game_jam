@@ -34,10 +34,10 @@ function hide(): void { overlay.hidden = true; overlay.innerHTML = ''; }
 function showMenu(): void {
   show(`<div class="card">
     <h1>Каракурт: ночная смена</h1>
-    <p>Человек видит вредителя. А ты — просто паук, который собирает ужин.</p>
-    <p class="big">Поймай ${GOAL} мух и вернись в зелёное гнездо за ${DURATION} секунд.</p>
+    <p>Человек видит в тебе вредителя. А ты — каракурт, и у тебя с ним свои счёты.</p>
+    <p class="big">Поймай ${GOAL} мух, наберись яда и укуси руку человека за ${DURATION} секунд.</p>
     <p><b>Паутина</b> (Space / кнопка) — ставит ловушку: мухи в ней ловятся сами. Заряда три, один возвращается за 4 секунды.</p>
-    <p><b>Фонарь</b> выдаёт тебя, <b>тапок</b> бьёт туда, где ты стоял: красный круг — беги! Укрытия (стол, шкаф, гнездо) защищают.</p>
+    <p>Человек справа светит <b>налобным фонарём</b> и замахивается <b>тапком</b> туда, где ты стоял: красный круг — беги! Укрытия (стол, шкаф, гнездо) защищают.</p>
     <p class="muted">Ходьба: WASD / стрелки или нажми и веди мышью/пальцем. Пауза: P или Esc. Три жизни.</p>
     ${best ? `<p class="muted">Рекорд: ${best} мух за смену</p>` : ''}
     <div class="row"><button data-act="start" autofocus>Начать смену</button></div>
@@ -53,8 +53,8 @@ function showEnd(): void {
   const won = game.status === 'won';
   const record = game.score > best;
   if (record) { best = game.score; saveBest(best); }
-  show(`<div class="card"><h1>${won ? 'Ужин удался!' : 'Смена провалена'}</h1>
-    <p class="big">${won ? 'Добыча дома, фонарь погас.' : game.reason}</p>
+  show(`<div class="card"><h1>${won ? 'Укус засчитан!' : 'Человек победил'}</h1>
+    <p class="big">${won ? 'Человек вскрикнул и выронил фонарь. Рука цела, но урок усвоен.' : game.reason}</p>
     <p>Мух поймано: <b>${game.score}</b> из ${GOAL} · Жизней осталось: <b>${Math.max(0, game.health)}</b> · Время: <b>${Math.round(game.elapsed)} с</b></p>
     ${record ? '<p class="muted">Новый рекорд!</p>' : best ? `<p class="muted">Рекорд: ${best}</p>` : ''}
     <div class="row"><button data-act="start" autofocus>Ещё раз</button></div></div>`);

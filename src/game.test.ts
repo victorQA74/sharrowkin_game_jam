@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, update, spinWeb, isHidden, WORLD, GOAL } from './game';
+import { createGame, update, spinWeb, isHidden, WORLD, GOAL, HAND } from './game';
 
 describe('night shift rules', () => {
   it('starts a fresh run without shared state', () => {
@@ -23,11 +23,15 @@ describe('night shift rules', () => {
     for (let i = 0; i < 71; i++) update(s, 0.1, { x: 0, y: 0 }, () => 0.5);
     expect(s.silk).toBeGreaterThanOrEqual(1);
   });
-  it('catches a fly in a web and wins only after returning home', () => {
+  it('does not win at the hand before the quota is caught', () => {
+    const s = createGame(); s.score = GOAL - 1; s.player = { x: HAND.x, y: HAND.y };
+    update(s, 0.01, { x: 0, y: 0 }, () => 0.5); expect(s.status).toBe('playing');
+  });
+  it('catches a fly in a web and wins only after biting the human hand', () => {
     const s = createGame(); s.score = GOAL - 1; s.player = { x: 500, y: 300 };
     s.flies = [{ x: 500, y: 300, angle: 0, phase: 0 }]; s.webs = [{ x: 500, y: 300, life: 5 }];
     update(s, 0.01, { x: 0, y: 0 }, () => 0.5); expect(s.score).toBe(GOAL); expect(s.status).toBe('playing');
-    s.player = { x: 145, y: 395 }; update(s, 0.01, { x: 0, y: 0 }); expect(s.status).toBe('won');
+    s.player = { x: HAND.x, y: HAND.y }; update(s, 0.01, { x: 0, y: 0 }); expect(s.status).toBe('won');
   });
   it('telegraphs a strike, hurts only once, and can be dodged', () => {
     const s = createGame(); s.player = { x: 600, y: 300 }; s.strike = { x: 600, y: 300, timer: 0.05, hit: false };

@@ -1,4 +1,4 @@
-import { WORLD, GOAL, DURATION, SHELTERS, isHidden, type Game, type Point } from './game';
+import { WORLD, GOAL, DURATION, SHELTERS, HAND, isHidden, type Game, type Point } from './game';
 
 export type View = { t: number; target: Point | null; best: number };
 
@@ -17,8 +17,7 @@ function room(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#dfe9ff'; ctx.beginPath(); ctx.arc(915, 24, 8, 0, TAU); ctx.fill();
 }
 
-function shelters(ctx: CanvasRenderingContext2D, g: Game, t: number) {
-  const ready = g.score >= GOAL;
+function shelters(ctx: CanvasRenderingContext2D) {
   SHELTERS.forEach((r, i) => {
     if (i === 1) { // table
       ctx.fillStyle = '#6b4a35'; ctx.fillRect(r.x - 14, r.y - 20, r.w + 28, 20);
@@ -27,9 +26,8 @@ function shelters(ctx: CanvasRenderingContext2D, g: Game, t: number) {
       ctx.fillStyle = '#4f3a52'; ctx.fillRect(r.x - 6, r.y - 80, r.w + 12, 80);
       ctx.fillStyle = '#3c2b3f'; ctx.fillRect(r.x + r.w / 2 - 1, r.y - 78, 3, 76);
     }
-    const pulse = r.home && ready ? 0.25 + 0.2 * Math.sin(t * 6) : 0;
-    ctx.fillStyle = r.home ? `rgba(120,220,120,${0.16 + pulse})` : 'rgba(6,4,12,.55)';
-    ctx.strokeStyle = r.home ? '#9be564' : '#8d79b0'; ctx.lineWidth = r.home && ready ? 4 : 2;
+    ctx.fillStyle = r.home ? 'rgba(120,220,120,.16)' : 'rgba(6,4,12,.55)';
+    ctx.strokeStyle = r.home ? '#9be564' : '#8d79b0'; ctx.lineWidth = 2;
     ctx.setLineDash([9, 7]);
     ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 14); ctx.fill(); ctx.stroke();
     ctx.setLineDash([]);
@@ -51,32 +49,85 @@ function webs(ctx: CanvasRenderingContext2D, g: Game) {
 function flies(ctx: CanvasRenderingContext2D, g: Game, t: number) {
   for (const f of g.flies) {
     ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.angle);
-    const flap = 5 + Math.sin(t * 60 + f.phase) * 3;
-    ctx.fillStyle = 'rgba(210,235,255,.65)';
-    ctx.beginPath(); ctx.ellipse(-1, -5, 7, flap, 0, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-1, 5, 7, flap, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#2f3b2a'; ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#c9ed9e'; ctx.beginPath(); ctx.arc(4, 0, 2, 0, TAU); ctx.fill();
+    // A housefly: small dark body, red eyes, two narrow wings swept back (not butterfly-like).
+    ctx.fillStyle = 'rgba(201,237,158,.16)'; ctx.beginPath(); ctx.arc(0, 0, 13, 0, TAU); ctx.fill();
+    const buzz = Math.sin(t * 70 + f.phase) * 0.16;
+    ctx.fillStyle = 'rgba(225,238,255,.55)';
+    ctx.beginPath(); ctx.ellipse(-4, -3.5, 6.5, 1.9, -0.55 + buzz, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-4, 3.5, 6.5, 1.9, 0.55 - buzz, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#17171b'; ctx.beginPath(); ctx.ellipse(-1, 0, 5.5, 3.2, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(4, 0, 2.6, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#ff5a4a'; ctx.beginPath(); ctx.arc(5, -1.6, 1.2, 0, TAU); ctx.arc(5, 1.6, 1.2, 0, TAU); ctx.fill();
     ctx.restore();
   }
+}
+
+const SKIN = '#d9a98a', SLEEVE = '#3d4a6b';
+const SHOULDER: Point = { x: 1010, y: 400 };   // the arm that swings the slipper
+const LAMP: Point = { x: 952, y: 300 };         // headlamp on the human's forehead
+
+function arm(ctx: CanvasRenderingContext2D, from: Point, to: Point) {
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = SKIN; ctx.lineWidth = 28; ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+  ctx.strokeStyle = SLEEVE; ctx.lineWidth = 36; ctx.beginPath(); ctx.moveTo(from.x, from.y);
+  ctx.lineTo(from.x + (to.x - from.x) * 0.45, from.y + (to.y - from.y) * 0.45); ctx.stroke();
+}
+
+// The human: top view at the right edge of the room. Head with a headlamp, a hand resting on
+// the floor (the spider's target) and a second arm that swings the slipper.
+function human(ctx: CanvasRenderingContext2D, t: number) {
+  ctx.fillStyle = SLEEVE; ctx.beginPath(); ctx.ellipse(1055, 300, 95, 215, 0, 0, TAU); ctx.fill();
+  const hx = HAND.x + Math.sin(t * 1.3) * 2, hy = HAND.y + Math.cos(t * 1.1) * 2;
+  arm(ctx, { x: 1040, y: 185 }, { x: hx, y: hy });
+  ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(hx, hy, 30, 0, TAU); ctx.fill();
+  for (let i = -2; i <= 1; i++) { ctx.beginPath(); ctx.ellipse(hx - 30, hy + i * 13 + 6, 17, 6, i * 0.12, 0, TAU); ctx.fill(); }
+  arm(ctx, SHOULDER, { x: 962, y: 408 });
+  ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(1000, 300, 52, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(1006, 246, 9, 14, 0, 0, TAU); ctx.ellipse(1006, 354, 9, 14, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#2a1d1a'; ctx.beginPath(); ctx.arc(1012, 300, 47, 0, TAU); ctx.fill();
+  const glow = ctx.createRadialGradient(LAMP.x, LAMP.y, 2, LAMP.x, LAMP.y, 26);
+  glow.addColorStop(0, 'rgba(255,245,190,.95)'); glow.addColorStop(1, 'rgba(255,245,190,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(LAMP.x, LAMP.y, 26, 0, TAU); ctx.fill();
+}
+
+// Marks the hand: a quiet label early on, a pulsing "bite here" ring once the prey is collected.
+function handMark(ctx: CanvasRenderingContext2D, g: Game, t: number) {
+  const ready = g.score >= GOAL;
+  if (ready) {
+    ctx.fillStyle = 'rgba(250,118,103,.2)'; ctx.beginPath(); ctx.arc(HAND.x, HAND.y, HAND.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(HAND.x, HAND.y, HAND.r + Math.sin(t * 7) * 4, 0, TAU); ctx.stroke();
+  }
+  ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center';
+  ctx.fillStyle = ready ? '#ffd166' : 'rgba(255,255,255,.4)';
+  ctx.fillText(ready ? 'УКУСИ!' : 'РУКА ЧЕЛОВЕКА', HAND.x - 8, HAND.y + HAND.r + 22);
+}
+
+function slipper(ctx: CanvasRenderingContext2D, p: Point, angle: number, scale: number) {
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(angle); ctx.scale(scale, scale);
+  ctx.fillStyle = '#7a4f3a'; ctx.beginPath(); ctx.ellipse(0, 0, 78, 40, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#a56d4f'; ctx.beginPath(); ctx.ellipse(-8, -4, 56, 26, 0, 0, TAU); ctx.fill();
+  ctx.restore();
 }
 
 function strike(ctx: CanvasRenderingContext2D, g: Game) {
   const s = g.strike; if (!s) return;
+  // reach: 0 -> 1 while the red circle fills, then the arm pulls back after the hit
+  const reach = !s.hit ? 1 - Math.max(0, s.timer) / 0.95 : Math.max(0, 1 + s.timer / 0.5);
   if (!s.hit) {
-    const p = 1 - Math.max(0, s.timer) / 0.95;
     ctx.strokeStyle = '#fa7667'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 76, 0, TAU); ctx.stroke();
-    ctx.fillStyle = `rgba(250,118,103,${0.15 + p * 0.3})`; ctx.beginPath(); ctx.arc(s.x, s.y, 76 * p, 0, TAU); ctx.fill();
-  } else {
-    ctx.save(); ctx.globalAlpha = Math.max(0, 1 + s.timer / 0.5); ctx.translate(s.x, s.y); ctx.rotate(-0.4);
-    ctx.fillStyle = '#7a4f3a'; ctx.beginPath(); ctx.ellipse(0, 0, 78, 40, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#a56d4f'; ctx.beginPath(); ctx.ellipse(-8, -4, 56, 26, 0, 0, TAU); ctx.fill();
-    ctx.restore();
+    ctx.fillStyle = `rgba(250,118,103,${0.15 + reach * 0.3})`; ctx.beginPath(); ctx.arc(s.x, s.y, 76 * reach, 0, TAU); ctx.fill();
   }
+  const tip: Point = { x: SHOULDER.x + (s.x - SHOULDER.x) * reach, y: SHOULDER.y + (s.y - SHOULDER.y) * reach };
+  arm(ctx, SHOULDER, tip);
+  slipper(ctx, tip, Math.atan2(s.y - SHOULDER.y, s.x - SHOULDER.x), 0.5 + 0.5 * reach);
 }
 
 function spider(ctx: CanvasRenderingContext2D, g: Game, t: number) {
   if (g.invincible > 0 && Math.floor(t * 14) % 2 === 0) return;
+  // Soft halo keeps the dark spider readable on the dark floor and inside shelters.
+  const halo = ctx.createRadialGradient(g.player.x, g.player.y, 4, g.player.x, g.player.y, 40);
+  halo.addColorStop(0, 'rgba(205,185,255,.5)'); halo.addColorStop(1, 'rgba(205,185,255,0)');
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(g.player.x, g.player.y, 40, 0, TAU); ctx.fill();
   ctx.save(); ctx.translate(g.player.x, g.player.y); ctx.rotate(g.facing); ctx.scale(1.35, 1.35);
   ctx.globalAlpha = isHidden(g) ? 0.6 : 1;
   ctx.strokeStyle = '#0d0912'; ctx.lineWidth = 2; ctx.lineCap = 'round';
@@ -97,6 +148,13 @@ function spider(ctx: CanvasRenderingContext2D, g: Game, t: number) {
 
 function darkness(ctx: CanvasRenderingContext2D, g: Game) {
   const lit = g.suspicion > 0.5;
+  // beam from the human's headlamp to the lit spot on the floor
+  const dx = g.light.x - LAMP.x, dy = g.light.y - LAMP.y, d = Math.hypot(dx, dy) || 1;
+  const nx = -dy / d * 125, ny = dx / d * 125;
+  const beam = ctx.createLinearGradient(LAMP.x, LAMP.y, g.light.x, g.light.y);
+  beam.addColorStop(0, 'rgba(255,240,180,.32)'); beam.addColorStop(1, 'rgba(255,236,170,.1)');
+  ctx.fillStyle = beam; ctx.beginPath(); ctx.moveTo(LAMP.x, LAMP.y);
+  ctx.lineTo(g.light.x + nx, g.light.y + ny); ctx.lineTo(g.light.x - nx, g.light.y - ny); ctx.closePath(); ctx.fill();
   ctx.fillStyle = lit ? 'rgba(255,214,140,.2)' : 'rgba(255,236,170,.12)';
   ctx.beginPath(); ctx.arc(g.light.x, g.light.y, 125, 0, TAU); ctx.fill();
   const gr = ctx.createRadialGradient(g.light.x, g.light.y, 40, g.light.x, g.light.y, 340);
@@ -134,12 +192,12 @@ function banner(ctx: CanvasRenderingContext2D, text: string, color: string) {
 }
 
 export function draw(ctx: CanvasRenderingContext2D, g: Game, v: View): void {
-  room(ctx); shelters(ctx, g, v.t); webs(ctx, g);
+  room(ctx); shelters(ctx); human(ctx, v.t); webs(ctx, g);
   if (v.target) {
     ctx.strokeStyle = 'rgba(155,229,100,.6)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(v.target.x, v.target.y, 10 + Math.sin(v.t * 8) * 2, 0, TAU); ctx.stroke();
   }
-  darkness(ctx, g); flies(ctx, g, v.t); strike(ctx, g); spider(ctx, g, v.t);
+  darkness(ctx, g); handMark(ctx, g, v.t); flies(ctx, g, v.t); strike(ctx, g); spider(ctx, g, v.t);
   for (const p of g.particles) {
     ctx.globalAlpha = Math.max(0, p.life / 0.8); ctx.fillStyle = p.color;
     ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, TAU); ctx.fill();
@@ -147,7 +205,7 @@ export function draw(ctx: CanvasRenderingContext2D, g: Game, v: View): void {
   ctx.globalAlpha = 1;
   hud(ctx, g);
   if (g.status === 'playing') {
-    if (g.score >= GOAL) banner(ctx, 'Добыча собрана — домой, в гнездо!', '#9be564');
+    if (g.score >= GOAL) banner(ctx, 'Добыча собрана — кусай руку человека!', '#ffd166');
     else if (g.strike && !g.strike.hit && !isHidden(g)) banner(ctx, 'Тапок! Уходи с красного круга!', '#fa7667');
     else if (g.suspicion > 0.6 && !isHidden(g)) banner(ctx, 'Фонарь тебя заметил — в укрытие!', '#ffd166');
   }
