@@ -3,6 +3,7 @@ import { WORLD, GOAL, DURATION, SHELTERS, HAND, isHidden, type Game, type Point 
 export type View = { t: number; target: Point | null; best: number };
 
 const TAU = Math.PI * 2;
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 function room(ctx: CanvasRenderingContext2D) {
   const g = ctx.createLinearGradient(0, 0, 0, WORLD.h);
@@ -63,7 +64,9 @@ function flies(ctx: CanvasRenderingContext2D, g: Game, t: number) {
 }
 
 const SKIN = '#d9a98a', SLEEVE = '#3d4a6b';
+const HAND_SCALE = 1.15;
 const SHOULDER: Point = { x: 1010, y: 400 };   // the arm that swings the slipper
+const RESTING_HAND: Point = { x: 958, y: 409 };
 const LAMP: Point = { x: 952, y: 300 };         // headlamp on the human's forehead
 
 function arm(ctx: CanvasRenderingContext2D, from: Point, to: Point) {
@@ -110,17 +113,15 @@ function hand(ctx: CanvasRenderingContext2D, p: Point, angle: number, scale = 1,
   ctx.restore();
 }
 
-// The human: top view at the right edge of the room. Head with a headlamp, a hand resting on
-// the floor (the spider's target) and a second arm that swings the slipper.
+// The human: top view at the right edge of the room. Only the target hand is drawn here;
+// strike() owns the other arm in every pose, including rest.
 function human(ctx: CanvasRenderingContext2D, t: number) {
   ctx.fillStyle = SLEEVE; ctx.beginPath(); ctx.ellipse(1055, 300, 95, 215, 0, 0, TAU); ctx.fill();
   const hx = HAND.x + Math.sin(t * 1.3) * 2, hy = HAND.y + Math.cos(t * 1.1) * 2;
   const elbow: Point = { x: 1040, y: 185 };
   arm(ctx, elbow, { x: hx + 14, y: hy });
   // palm centre sits on HAND, fingers reach toward the room (the spider's side)
-  hand(ctx, { x: hx + 8, y: hy }, Math.atan2(hy - elbow.y, hx - elbow.x), 1.15, -1);
-  arm(ctx, SHOULDER, { x: 962, y: 408 });
-  hand(ctx, { x: 958, y: 409 }, Math.atan2(408 - SHOULDER.y, 962 - SHOULDER.x), 0.95, 1);
+  hand(ctx, { x: hx + 8, y: hy }, Math.atan2(hy - elbow.y, hx - elbow.x), HAND_SCALE, -1);
   ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(1000, 300, 52, 0, TAU); ctx.fill();
   ctx.beginPath(); ctx.ellipse(1006, 246, 9, 14, 0, 0, TAU); ctx.ellipse(1006, 354, 9, 14, 0, 0, TAU); ctx.fill();
   ctx.fillStyle = '#2a1d1a'; ctx.beginPath(); ctx.arc(1012, 300, 47, 0, TAU); ctx.fill();
@@ -148,18 +149,27 @@ function slipper(ctx: CanvasRenderingContext2D, p: Point, angle: number, scale: 
   ctx.restore();
 }
 
+// One owner for the attacking forearm AND hand: idle, wind-up, impact and recovery.
+// A strike remains present through timer === -0.5, including frozen end frames.
 function strike(ctx: CanvasRenderingContext2D, g: Game) {
-  const s = g.strike; if (!s) return;
-  // reach: 0 -> 1 while the red circle fills, then the arm pulls back after the hit
-  const reach = !s.hit ? 1 - Math.max(0, s.timer) / 0.95 : Math.max(0, 1 + s.timer / 0.5);
-  if (!s.hit) {
+  const s = g.strike;
+  const reach = s ? clamp01(s.hit ? 1 + s.timer / 0.5 : 1 - s.timer / 0.95) : 0;
+  if (s && !s.hit) {
     ctx.strokeStyle = '#fa7667'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.x, s.y, 76, 0, TAU); ctx.stroke();
     ctx.fillStyle = `rgba(250,118,103,${0.15 + reach * 0.3})`; ctx.beginPath(); ctx.arc(s.x, s.y, 76 * reach, 0, TAU); ctx.fill();
   }
-  const tip: Point = { x: SHOULDER.x + (s.x - SHOULDER.x) * reach, y: SHOULDER.y + (s.y - SHOULDER.y) * reach };
+  // Both ends of the attack meet the actual resting wrist, not the offscreen shoulder.
+  const tip: Point = s
+    ? { x: RESTING_HAND.x + (s.x - RESTING_HAND.x) * reach, y: RESTING_HAND.y + (s.y - RESTING_HAND.y) * reach }
+    : RESTING_HAND;
+  const restAngle = Math.atan2(RESTING_HAND.y - SHOULDER.y, RESTING_HAND.x - SHOULDER.x);
+  const aimAngle = s ? Math.atan2(s.y - SHOULDER.y, s.x - SHOULDER.x) : restAngle;
+  const turn = Math.atan2(Math.sin(aimAngle - restAngle), Math.cos(aimAngle - restAngle));
+  const angle = restAngle + turn * reach;
   arm(ctx, SHOULDER, tip);
-  hand(ctx, tip, Math.atan2(s.y - SHOULDER.y, s.x - SHOULDER.x), 0.95, 1);
-  slipper(ctx, tip, Math.atan2(s.y - SHOULDER.y, s.x - SHOULDER.x), 0.5 + 0.5 * reach);
+  // Keep the attacking hand above the slipper throughout the strike.
+  if (s) slipper(ctx, tip, angle, 0.5 + 0.5 * reach);
+  hand(ctx, tip, angle, HAND_SCALE, 1);
 }
 
 function spider(ctx: CanvasRenderingContext2D, g: Game, t: number) {
@@ -232,6 +242,10 @@ function banner(ctx: CanvasRenderingContext2D, text: string, color: string) {
 }
 
 export function draw(ctx: CanvasRenderingContext2D, g: Game, v: View): void {
+  // Always erase the whole previous frame before drawing hands or moving scene parts.
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.fillStyle = '#282138'; ctx.fillRect(0, 0, WORLD.w, WORLD.h);
+  ctx.save();
   room(ctx); shelters(ctx); human(ctx, v.t); webs(ctx, g);
   if (v.target) {
     ctx.strokeStyle = 'rgba(155,229,100,.6)'; ctx.lineWidth = 2;
@@ -243,6 +257,7 @@ export function draw(ctx: CanvasRenderingContext2D, g: Game, v: View): void {
     ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, TAU); ctx.fill();
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
   hud(ctx, g);
   if (g.status === 'playing') {
     if (g.score >= GOAL) banner(ctx, 'Добыча собрана — кусай руку человека!', '#ffd166');
