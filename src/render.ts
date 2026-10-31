@@ -109,7 +109,11 @@ function hand(ctx: CanvasRenderingContext2D, p: Point, angle: number, scale = 1,
     const kx = 12 + len * 0.5, ky = y + (tipY - y) * 0.5;
     ctx.beginPath(); ctx.moveTo(kx, ky - 3); ctx.lineTo(kx, ky + 3); ctx.stroke();
   }
-  ctx.beginPath(); ctx.moveTo(-6, -8); ctx.quadraticCurveTo(4, 0, -6, 8); ctx.stroke(); // tendon hint
+  // Dorsal tendons run lengthwise from the wrist to the knuckles, not across a palm.
+  ctx.strokeStyle = 'rgba(120,70,50,.25)'; ctx.lineWidth = 1.2;
+  for (const [y] of fingers) {
+    ctx.beginPath(); ctx.moveTo(-13, y * 0.45); ctx.quadraticCurveTo(0, y * 0.7, 14, y); ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -120,8 +124,8 @@ function human(ctx: CanvasRenderingContext2D, t: number) {
   const hx = HAND.x + Math.sin(t * 1.3) * 2, hy = HAND.y + Math.cos(t * 1.1) * 2;
   const elbow: Point = { x: 1040, y: 185 };
   arm(ctx, elbow, { x: hx + 14, y: hy });
-  // palm centre sits on HAND, fingers reach toward the room (the spider's side)
-  hand(ctx, { x: hx + 8, y: hy }, Math.atan2(hy - elbow.y, hx - elbow.x), HAND_SCALE, -1);
+  // Right hand, back up: thumb points toward the body. The bite target stays on HAND.
+  hand(ctx, { x: hx + 8, y: hy }, Math.atan2(hy - elbow.y, hx - elbow.x), HAND_SCALE, 1);
   ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(1000, 300, 52, 0, TAU); ctx.fill();
   ctx.beginPath(); ctx.ellipse(1006, 246, 9, 14, 0, 0, TAU); ctx.ellipse(1006, 354, 9, 14, 0, 0, TAU); ctx.fill();
   ctx.fillStyle = '#2a1d1a'; ctx.beginPath(); ctx.arc(1012, 300, 47, 0, TAU); ctx.fill();
@@ -169,7 +173,8 @@ function strike(ctx: CanvasRenderingContext2D, g: Game) {
   arm(ctx, SHOULDER, tip);
   // Keep the attacking hand above the slipper throughout the strike.
   if (s) slipper(ctx, tip, angle, 0.5 + 0.5 * reach);
-  hand(ctx, tip, angle, HAND_SCALE, 1);
+  // Left hand, back up: the opposite thumb side to the resting right hand.
+  hand(ctx, tip, angle, HAND_SCALE, -1);
 }
 
 function spider(ctx: CanvasRenderingContext2D, g: Game, t: number) {
